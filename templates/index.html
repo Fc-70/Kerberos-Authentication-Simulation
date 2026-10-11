@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kerberos Authentication Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen p-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <header class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">KERBEROS AUTHENTICATION SIMULATOR</h1>
+      <p class="text-slate-500 text-sm mt-1">Client → Authentication Server (AS) → Ticket Granting Server (TGS) → Service Server</p>
+    </header>
+
+    <!-- Node Architecture -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+        <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Node 1</span>
+        <h3 class="font-bold text-slate-800 mt-1">CLIENT</h3>
+        <p class="text-xs text-slate-500 mt-1">User / Requester</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+        <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Node 2</span>
+        <h3 class="font-bold text-slate-800 mt-1">AS</h3>
+        <p class="text-xs text-slate-500 mt-1">Checks user credentials & issues TGT</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+        <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Node 3</span>
+        <h3 class="font-bold text-slate-800 mt-1">TGS</h3>
+        <p class="text-xs text-slate-500 mt-1">Validates TGT & issues Service Ticket</p>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+        <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Node 4</span>
+        <h3 class="font-bold text-slate-800 mt-1">SERVICE SERVER</h3>
+        <p class="text-xs text-slate-500 mt-1">Validates Service Ticket & allows access</p>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
+          <input id="username" type="text" value="student" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          <span class="text-[11px] text-slate-400">Demo users: student, admin</span>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Password</label>
+          <input id="password" type="password" value="cnlab123" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          <span class="text-[11px] text-slate-400">Pass: cnlab123 / admin123</span>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Scenario</label>
+          <select id="scenario" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="Successful authentication">Successful authentication</option>
+            <option value="Incorrect password">Incorrect password</option>
+            <option value="Expired service ticket">Expired service ticket</option>
+            <option value="Tampered service ticket">Tampered service ticket</option>
+            <option value="Unauthorized service">Unauthorized service</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+        <div class="flex space-x-3">
+          <button onclick="runSimulation()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2.5 rounded-lg transition-all shadow-sm">
+            Run Simulation
+          </button>
+          <button onclick="clearLogs()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm px-4 py-2.5 rounded-lg transition-all">
+            Clear Log
+          </button>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-bold text-slate-500 uppercase">Status:</span>
+          <span id="status-badge" class="px-3 py-1 text-xs font-bold rounded-full bg-slate-200 text-slate-700">
+            WAITING FOR AUTHENTICATION
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Protocol Logs & Tickets -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Terminal Log -->
+      <div class="lg:col-span-2 bg-slate-900 rounded-xl p-5 shadow-sm font-mono text-xs text-slate-200 flex flex-col h-[400px]">
+        <div class="text-slate-400 font-bold mb-3 border-b border-slate-800 pb-2">PROTOCOL MESSAGE LOG</div>
+        <div id="log-container" class="overflow-y-auto flex-1 space-y-1.5 pr-2">
+          <div class="text-slate-500">[SYSTEM] Simulator ready. Select a scenario and click 'Run Simulation'.</div>
+        </div>
+      </div>
+
+      <!-- Ticket Inspector -->
+      <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col h-[400px] overflow-hidden">
+        <div class="text-slate-700 font-bold text-sm mb-3 border-b border-slate-100 pb-2">TICKET INSPECTOR</div>
+        <div class="overflow-y-auto flex-1 space-y-4 text-xs font-mono">
+          <div>
+            <span class="font-bold text-blue-600">Ticket Granting Ticket (TGT):</span>
+            <pre id="tgt-box" class="bg-slate-50 p-2.5 rounded border border-slate-200 mt-1 whitespace-pre-wrap break-all text-slate-600">None</pre>
+          </div>
+          <div>
+            <span class="font-bold text-green-600">Service Ticket (ST):</span>
+            <pre id="st-box" class="bg-slate-50 p-2.5 rounded border border-slate-200 mt-1 whitespace-pre-wrap break-all text-slate-600">None</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function runSimulation() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const scenario = document.getElementById("scenario").value;
+
+      const res = await fetch("/api/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, scenario })
+      });
+      const data = await res.json();
+
+      // Update status badge
+      const badge = document.getElementById("status-badge");
+      badge.textContent = data.status;
+      if (data.status_type === "success") {
+        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+      } else {
+        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300";
+      }
+
+      // Update logs
+      const logContainer = document.getElementById("log-container");
+      logContainer.innerHTML = "";
+      data.logs.forEach(l => {
+        const div = document.createElement("div");
+        let color = "text-slate-300";
+        if (l.tag === "heading") color = "text-sky-400 font-semibold";
+        if (l.tag === "success") color = "text-emerald-400";
+        if (l.tag === "error") color = "text-rose-400";
+
+        div.className = color;
+        div.textContent = `[${l.time}] [${l.actor}] ${l.message}`;
+        logContainer.appendChild(div);
+      });
+      logContainer.scrollTop = logContainer.scrollHeight;
+
+      // Update tickets
+      document.getElementById("tgt-box").textContent = data.tgt ? JSON.stringify(data.tgt, null, 2) : "None";
+      document.getElementById("st-box").textContent = data.service_ticket ? JSON.stringify(data.service_ticket, null, 2) : "None";
+    }
+
+    function clearLogs() {
+      document.getElementById("log-container").innerHTML = "<div class='text-slate-500'>Log cleared.</div>";
+      document.getElementById("tgt-box").textContent = "None";
+      document.getElementById("st-box").textContent = "None";
+      const badge = document.getElementById("status-badge");
+      badge.textContent = "WAITING FOR AUTHENTICATION";
+      badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-slate-200 text-slate-700";
+    }
+  </script>
+</body>
+</html>
